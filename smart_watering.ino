@@ -4,8 +4,8 @@
 #include <Adafruit_SSD1306.h>
 
 // ==== WiFi Credentials ====
-const char* ssid = "SystemWifi";       // <-- change this
-const char* password = "SystemWifi23"; // <-- change this
+const char* ssid = "YourWiFiName";       // <-- change this
+const char* password = "YourWiFiPassword"; // <-- change this
 
 // ==== OLED Setup ====
 #define SCREEN_WIDTH 128
@@ -78,4 +78,44 @@ void loop() {
   int moistureB = map(sensorB, 4095, 1500, 0, 100);
   int moistureC = map(sensorC, 4095, 1500, 0, 100);
 
-  // Constrain between 0–10
+  // Constrain between 0–100
+  moistureA = constrain(moistureA, 0, 100);
+  moistureB = constrain(moistureB, 0, 100);
+  moistureC = constrain(moistureC, 0, 100);
+
+  // Print to Serial Monitor
+  Serial.print("A: "); Serial.print(moistureA); Serial.print("% | ");
+  Serial.print("B: "); Serial.print(moistureB); Serial.print("% | ");
+  Serial.print("C: "); Serial.print(moistureC); Serial.println("%");
+
+  // Control relays (ON if < 40%)
+  digitalWrite(RELAY_PIN_A, (moistureA < 40) ? HIGH : LOW);
+  digitalWrite(RELAY_PIN_B, (moistureB < 40) ? HIGH : LOW);
+  digitalWrite(RELAY_PIN_C, (moistureC < 40) ? HIGH : LOW);
+
+  // Display on OLED
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+
+  display.setCursor(0, 0);
+  display.print("A: "); display.print(moistureA); display.println("%");
+
+  display.setCursor(0, 15);
+  display.print("B: "); display.print(moistureB); display.println("%");
+
+  display.setCursor(0, 30);
+  display.print("C: "); display.print(moistureC); display.println("%");
+
+  // Show WiFi status
+  display.setCursor(0, 50);
+  if (WiFi.status() == WL_CONNECTED) {
+    display.print("WiFi OK");
+  } else {
+    display.print("WiFi Lost!");
+  }
+
+  display.display();
+
+  delay(1000);
+}
