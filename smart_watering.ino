@@ -4,8 +4,8 @@
 #include <Adafruit_SSD1306.h>
 
 // ==== WiFi Credentials ====
-const char* ssid = "YourWiFiName";       // <-- change this
-const char* password = "YourWiFiPassword"; // <-- change this
+const char* ssid = "wifime";       // WiFi name
+const char* password = "12345678"; // WiFi pass
 
 // ==== OLED Setup ====
 #define SCREEN_WIDTH 128
@@ -14,35 +14,36 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // ==== Moisture sensor pins ====
 #define MOISTURE_PIN_A 34
-#define MOISTURE_PIN_B 33
 #define MOISTURE_PIN_C 32
 
 // ==== Relay pins ====
-#define RELAY_PIN_A 2   
-#define RELAY_PIN_B 4    
-#define RELAY_PIN_C 16   
+#define RELAY_PIN_A 2
+#define RELAY_PIN_C 16
+
+// Function to center text
+int centerX(String text, int textSize = 1) {
+  int textWidth = text.length() * 6 * textSize; 
+  return (128 - textWidth) / 2;
+}
 
 void setup() {
   Serial.begin(115200);
-  Wire.begin(21, 22); // SDA=21, SCL=22 for ESP32
+  Wire.begin(21, 22);
 
   // ==== OLED Init ====
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-    Serial.println(F("SSD1306 allocation failed"));
+    Serial.println("SSD1306 allocation failed");
     for (;;);
   }
 
   // ==== Relays Init ====
   pinMode(RELAY_PIN_A, OUTPUT);
-  pinMode(RELAY_PIN_B, OUTPUT);
   pinMode(RELAY_PIN_C, OUTPUT);
 
-  // Start with all pumps OFF
   digitalWrite(RELAY_PIN_A, LOW);
-  digitalWrite(RELAY_PIN_B, LOW);
   digitalWrite(RELAY_PIN_C, LOW);
 
-  // ==== WiFi Connection ====
+  // ==== WiFi Connect ====
   Serial.print("Connecting to WiFi: ");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
@@ -51,7 +52,8 @@ void setup() {
     delay(500);
     Serial.print(".");
   }
-  Serial.println("\n✅ WiFi connected!");
+
+  Serial.println("\nWiFi connected!");
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
 
@@ -59,61 +61,58 @@ void setup() {
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
-  display.setCursor(0, 0);
+
+  int xMsg = centerX("WiFi Connected!");
+  display.setCursor(xMsg, 0);
   display.println("WiFi Connected!");
-  display.setCursor(0, 15);
-  display.println(WiFi.localIP());
+
+  String ipStr = WiFi.localIP().toString();
+  int xIP = centerX(ipStr);
+  display.setCursor(xIP, 20);
+  display.println(ipStr);
+
   display.display();
-  delay(2000);
+  delay(2500);
 }
 
 void loop() {
-  // Read moisture sensors
+
+  // ==== Read Sensors ====
   int sensorA = analogRead(MOISTURE_PIN_A);
-  int sensorB = analogRead(MOISTURE_PIN_B);
   int sensorC = analogRead(MOISTURE_PIN_C);
 
-  // Map values to percentage (adjust calibration if needed)
   int moistureA = map(sensorA, 4095, 1500, 0, 100);
-  int moistureB = map(sensorB, 4095, 1500, 0, 100);
   int moistureC = map(sensorC, 4095, 1500, 0, 100);
 
-  // Constrain between 0–100
   moistureA = constrain(moistureA, 0, 100);
-  moistureB = constrain(moistureB, 0, 100);
   moistureC = constrain(moistureC, 0, 100);
 
-  // Print to Serial Monitor
+  // Serial debug
   Serial.print("A: "); Serial.print(moistureA); Serial.print("% | ");
-  Serial.print("B: "); Serial.print(moistureB); Serial.print("% | ");
   Serial.print("C: "); Serial.print(moistureC); Serial.println("%");
 
-  // Control relays (ON if < 40%)
-  digitalWrite(RELAY_PIN_A, (moistureA < 40) ? HIGH : LOW);
-  digitalWrite(RELAY_PIN_B, (moistureB < 40) ? HIGH : LOW);
-  digitalWrite(RELAY_PIN_C, (moistureC < 40) ? HIGH : LOW);
+  // ==== Relay Logic ====
+  digitalWrite(RELAY_PIN_A, (moistureA < 20) ? HIGH : LOW);
+  digitalWrite(RELAY_PIN_C, (moistureC < 20) ? HIGH : LOW);
 
-  // Display on OLED
+  // ==== OLED Display ====
   display.clearDisplay();
   display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
 
-  display.setCursor(0, 0);
-  display.print("A: "); display.print(moistureA); display.println("%");
+  // Line A
+  String textA = "A: " + String(moistureA) + "%";
+  display.setCursor(centerX(textA), 0);
+  display.println(textA);
 
-  display.setCursor(0, 15);
-  display.print("B: "); display.print(moistureB); display.println("%");
+  // Line C
+  String textC = "B: " + String(moistureC) + "%";
+  display.setCursor(centerX(textC), 15);
+  display.println(textC);
 
-  display.setCursor(0, 30);
-  display.print("C: "); display.print(moistureC); display.println("%");
-
-  // Show WiFi status
-  display.setCursor(0, 50);
-  if (WiFi.status() == WL_CONNECTED) {
-    display.print("WiFi OK");
-  } else {
-    display.print("WiFi Lost!");
-  }
+  // WiFi status
+  String wifiMsg = (WiFi.status() == WL_CONNECTED) ? "WiFi OK" : "WiFi Lost!";
+  display.setCursor(centerX(wifiMsg), 50);
+  display.println(wifiMsg);
 
   display.display();
 
